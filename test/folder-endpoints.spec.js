@@ -28,7 +28,7 @@ describe('Folder endpoints', function() {
       })
     })
 
-    context(`Given there are notes in the database`, () => {
+    context(`Given there are folders in the database`, () => {
       const testFolders = makeFoldersArray();
 
       beforeEach('insert folders', () => {
@@ -37,14 +37,14 @@ describe('Folder endpoints', function() {
           .insert(testFolders)
       })
 
-      it(`responds with 200 and all of the notes`, () => {
+      it(`responds with 200 and all of the folders`, () => {
         return supertest(app)
           .get('/api/folders')
           .expect(200, testFolders)
       })
     })
 
-    context(`Given an XSS attack note`, () => {
+    context(`Given an XSS attack folder`, () => {
       const testFolders = makeFoldersArray();
       const { maliciousFolder, expectedFolder } = makeMaliciousFolder();
 
@@ -90,7 +90,7 @@ describe('Folder endpoints', function() {
           .insert(testFolders)
       })
   
-      it('responds with 200 and the specified note', () => {
+      it('responds with 200 and the specified folder', () => {
         const folderId = 2
         const expectedFolder = testFolders[folderId - 1]
         return supertest(app)
@@ -108,66 +108,63 @@ describe('Folder endpoints', function() {
           .into('folders')
           .insert(testFolders)
       })
-  
+
       it('removes XSS attack content', () => {
         return supertest(app)
-          .get(`/api/notes/${maliciousNote.id}`)
+          .get(`/api/folders/${maliciousFolder.id}`)
           .expect(200)
           .expect(res => {
-            expect(res.body.note_name).to.eql(expectedNote.note_name)
-            expect(res.body.content).to.eql(expectedNote.content)
+            expect(res.body.folder_name).to.eql(expectedFolder.folder_name)
+            expect(res.body.note).to.eql(expectedFolder.note)
           })
       })
     })
   })
 
-  describe(`POST /api/notes`, () => {
-    const testNotes = makeNotesArray();
-    beforeEach('insert malicious note', () => {
+  describe(`POST /api/folders`, () => {
+    const testFolders = makeFoldersArray();
+    beforeEach('insert malicious folder', () => {
       return db
-        .into('notes')
-        .insert(testNotes)
+        .into('folders')
+        .insert(testFolders)
     })
 
-    it(`Creates a note, responding with 201 and the new note`, () => {
-      const newNote = {
-        note_name: 'Test new note',
-        content: 'Test new note content...'
+    it(`Creates a folder, responding with 201 and the new folder`, () => {
+      const newFolder = {
+        folder_name: 'Folder A',
       }
       return supertest(app)
-        .post('/api/notes')
-        .send(newNote)
+        .post('/api/folders')
+        .send(newFolder)
         .expect(201)
         .expect(res => {
-          expect(res.body.note_name).to.eql(newNote.note_name)
-          expect(res.body.content).to.eql(newNote.content)
+          expect(res.body.folder_name).to.eql(newFolder.folder_name)
           expect(res.body).to.have.property('id')
-          expect(res.headers.location).to.eql(`/api/notes/${res.body.id}`)
+          expect(res.headers.location).to.eql(`/api/folders/${res.body.id}`)
           const expected = new Intl.DateTimeFormat('en-US').format(new Date())
           const actual = new Intl.DateTimeFormat('en-US').format(new Date(res.body.date_modified))
           expect(actual).to.eql(expected)
         })
         .then(res => 
           supertest(app)
-            .get(`/api/notes/${res.body.id}`)
+            .get(`/api/folders/${res.body.id}`)
             .expect(res.body)
         )
     })
 
-    const requiredFields = ['note_name', 'content']
+    const requiredFields = ['folder_name']
 
     requiredFields.forEach(field => {
-      const newNote = {
-        note_name: 'Test new note',
-        content: 'Test new note content...'
+      const newFolder = {
+        folder_name: 'Test new folder',
       }
 
       it(`responds with 400 and an error message when the '${field}' is missing`, () => {
-        delete newNote[field]
+        delete newFolder[field]
 
         return supertest(app)
-          .post(`/api/notes`)
-          .send(newNote)
+          .post(`/api/folders`)
+          .send(newFolder)
           .expect(400, {
             error: { message: `Missing '${field}' in request body` }
           })
@@ -175,125 +172,123 @@ describe('Folder endpoints', function() {
     })
 
     it('removes XSS attack content from response', () => {
-      const { maliciousNote, expectedNote } = makeMaliciousNote()
+      const { maliciousFolder, expectedFolder } = makeMaliciousFolder()
       return supertest(app)
-        .post(`/api/notes`)
-        .send(maliciousNote)
+        .post(`/api/folders`)
+        .send(maliciousFolder)
         .expect(201)
         .expect(res => {
-          expect(res.body.note_name).to.eql(expectedNote.note_name)
-          expect(res.body.content).to.eql(expectedNote.content)
+          expect(res.body.folder_name).to.eql(expectedFolder.folder_name)
         })
     })
   })
 
-  describe(`DELETE /api/notes/:note_id`, () => {
-    context(`Given no notes`, () => {
+  describe(`DELETE /api/folders/:folder_id`, () => {
+    context(`Given no folders`, () => {
       it(`responds with 404`, () => {
-        const noteId = 123456
+        const folderId = 123456
         return supertest(app)
-          .delete(`/api/notes/${noteId}`)
-          .expect(404, { error: { message: `Note does not exist` } })
+          .delete(`/api/folders/${folderId}`)
+          .expect(404, { error: { message: `Folder does not exist` } })
       })
     })
 
-    context('Given there are notes in the database', () => {
-      const testNotes = makeNotesArray();
+    context('Given there are folders in the database', () => {
+      const testFolders = makeFoldersArray();
 
-      beforeEach('insert notes', () => {
+      beforeEach('insert folders', () => {
         return db
-          .into('notes')
-          .insert(testNotes)
+          .into('folders')
+          .insert(testFolders)
       })
 
-      it('responds with 204 and removes the note', () => {
+      it('responds with 204 and removes the folder', () => {
         const idToRemove = 2
-        const expectedNote = testNotes.filter(note => note.id !== idToRemove)
+        const expectedFolder = testFolders.filter(folder => folder.id !== idToRemove)
         return supertest(app)
-          .delete(`/api/notes/${idToRemove}`)
+          .delete(`/api/folders/${idToRemove}`)
           .expect(204)
           .then(res =>
             supertest(app)
-              .get(`/api/notes`)
-              .expect(expectedNote)
+              .get(`/api/folders`)
+              .expect(expectedFolder)
           )
       })
     })
   })
 
-  describe(`PATCH /api/notes/:note_id`, () => {
-    context(`Given no notes`, () => {
+  describe(`PATCH /api/folder/:folder_id`, () => {
+    context(`Given no folders`, () => {
       it(`responds with 404`, () => {
-        const noteId = 123456
+        const folderId = 123456
         return supertest(app)
-          .delete(`/api/notes/${noteId}`)
-          .expect(404, { error: { message: `Note does not exist` } })
+          .delete(`/api/folders/${folderId}`)
+          .expect(404, { error: { message: `Folder does not exist` } })
       })
     })
 
-    context('Given there are notes in the database', () => {
-      const testNotes = makeNotesArray()
+    context('Given there are folders in the database', () => {
+      const testFolders = makeFoldersArray()
 
-      beforeEach('insert notes', () => {
+      beforeEach('insert folders', () => {
         return db
-          .into('notes')
-          .insert(testNotes)
+          .into('folders')
+          .insert(testFolders)
       })
 
-      it('responds with 204 and updates the note', () => {
+      it('responds with 204 and updates the folder', () => {
         const idToUpdate = 2
-        const updateNote = {
-          note_name: 'updated note title',
-          content: 'updated note content',
+        const updateFolder = {
+          folder_name: 'updated folder name',
         }
-        const expectedNote = {
-          ...testNotes[idToUpdate - 1],
-          ...updateNote
+        const expectedFolder = {
+          ...testFolders[idToUpdate - 1],
+          ...updateFolder
         }
         return supertest(app)
-          .patch(`/api/notes/${idToUpdate}`)
-          .send(updateNote)
+          .patch(`/api/folders/${idToUpdate}`)
+          .send(updateFolder)
           .expect(204)
           .then(res =>
             supertest(app)
-              .get(`/api/note/${idToUpdate}`)
-              .expect(expectedNote)
+              .get(`/api/folder/${idToUpdate}`)
+              .expect(expectedFolder)
           )
       })
 
       it(`responds with 400 when no required fields supplied`, () => {
         const idToUpdate = 2
         return supertest(app)
-          .patch(`/api/notes/${idToUpdate}`)
+          .patch(`/api/folders/${idToUpdate}`)
           .send({ irrelevantField: 'foo' })
           .expect(400, {
             error: {
-              message: `Request body must contain either 'note_name' or 'content'`
+              message: `Request body must contain 'folder_name'`
             }
           })
       })
 
       it(`responds with 204 when updating only a subset of fields`, () => {
         const idToUpdate = 2
-        const updateNote = {
-          title: 'updated note title',
+        const updateFolder = {
+          title: 'updated folder title',
         }
-        const expectedNote = {
-          ...testNotes[idToUpdate - 1],
-          ...updateNote
+        const expectedFolder = {
+          ...testFolders[idToUpdate - 1],
+          ...updateFolder
         }
 
         return supertest(app)
-          .patch(`/api/notes/${idToUpdate}`)
+          .patch(`/api/folders/${idToUpdate}`)
           .send({
-            ...updateNote,
+            ...updateFolder,
             fieldToIgnore: 'should not be in GET response'
           })
           .expect(204)
           .then(res =>
             supertest(app)
-              .get(`/api/notes/${idToUpdate}`)
-              .expect(expectedNote)
+              .get(`/api/folders/${idToUpdate}`)
+              .expect(expectedFolder)
           )
       })
     })
