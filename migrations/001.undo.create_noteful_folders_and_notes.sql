@@ -1,0 +1,3 @@
+DROP TABLE IF EXSITS notes;
+
+DROP TABLE IF EXSITS folders;
